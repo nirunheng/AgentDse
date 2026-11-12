@@ -1,0 +1,16 @@
+{
+    "model_preset":"llama3_8b",
+    "batch_size":8,
+    "context_length":4096,
+    "element_size":2,
+    "timeout_s":900,
+    "core_num":16,
+    "fixed_hardware":{
+        "mac_num":8192,
+        "vec_num":512,
+        "buffer_size":3072,
+        "buffer_read_bw":8192,
+        "buffer_write_bw":8192,
+        "frequency":1000
+    }
+}

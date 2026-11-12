@@ -1,0 +1,15 @@
+{
+    "objective": "cost = (latency/base_latency) * (energy/base_energy) * (area/base_area)",
+    "baseline_bw_gbps":512,
+    "baseline_channel":8,
+    "points":[
+        {"channel": 2, "density_gb": 16},
+        {"channel": 4, "density_gb": 16},
+        {"channel": 8, "density_gb": 8},
+        {"channel": 16, "density_gb": 4},
+        {"channel": 32, "density_gb": 2},
+        {"channel": 64, "density_gb": 1},
+        {"channel": 128, "density_gb": 1}
+    ],
+    "initial_offsets": [0, 1, 2, 6]
+}

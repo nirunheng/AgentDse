@@ -1,0 +1,14 @@
+{
+  "channel": 32,
+  "density_gb": 2,
+  "bw_gbps": 2048,
+  "latency_s": 0.000260512,
+  "energy_j": 0.0313377763328,
+  "matrix_util": 0.2615,
+  "dram_util": 0.5672,
+  "dram_stall_cycle": 1858,
+  "e2e_cycles": 7341,
+  "status": "ok",
+  "rundir": "SEED",
+  "cost": 1.121001
+}
