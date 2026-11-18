@@ -2,7 +2,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent      # Beacon/agentdse
 BEACON = ROOT.parent                               # Beacon
-ATLAS = BEACON / "ATLAS-MICRO-2026-main"
+ATLAS = ROOT / "ATLAS-MICRO-2026-main"
 ATLAS_LIB = ATLAS / "simulator" / "build" / "lib"
 
 CONFIG_DIR = ROOT / "config"

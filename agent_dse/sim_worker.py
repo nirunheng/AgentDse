@@ -10,7 +10,7 @@ from pathlib import Path
 _WORKERS = int(os.environ.get("AGENTDSE_TILING_WORKERS", "4"))
 multiprocessing.cpu_count = lambda: max(2, int(_WORKERS / 0.8))
 
-ATLAS_PATH = "/data2/nirunheng/Project/Beacon/ATLAS-MICRO-2026-main"
+ATLAS_PATH = str(Path(__file__).resolve().parent / "ATLAS-MICRO-2026-main")
 
 sys.path.insert(0, ATLAS_PATH + "/simulator/build/lib")
 sys.path.insert(0, ATLAS_PATH)
@@ -19,7 +19,6 @@ os.chdir(ATLAS_PATH)
 def main()->int:
     if len(sys.argv) != 4:
         raise ValueError(f"Usage: python ./sim_worker.py <system.json> <artifacts_dir> <out_json>")
-        return 2
 
     system_json_path = Path(sys.argv[1])
     artifacts_dir = Path(sys.argv[2])

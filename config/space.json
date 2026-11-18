@@ -1,15 +1,44 @@
 {
     "objective": "cost = (latency/base_latency) * (energy/base_energy) * (area/base_area)",
-    "baseline_bw_gbps":512,
-    "baseline_channel":8,
-    "points":[
-        {"channel": 2, "density_gb": 16},
-        {"channel": 4, "density_gb": 16},
-        {"channel": 8, "density_gb": 8},
-        {"channel": 16, "density_gb": 4},
-        {"channel": 32, "density_gb": 2},
-        {"channel": 64, "density_gb": 1},
-        {"channel": 128, "density_gb": 1}
+    "dims":[
+        {
+            "name":"bw_gbps",
+            "levels":[
+                {"bw_gbps": 256, "channel":4, "density_gb": 16},
+                {"bw_gbps": 512, "channel":8, "density_gb": 8},
+                {"bw_gbps": 1024, "channel":16, "density_gb": 4},
+                {"bw_gbps": 2048, "channel":32, "density_gb": 2},
+                {"bw_gbps": 4096, "channel":64, "density_gb": 1}
+            ]
+        },
+        {
+            "name": "mac_num",
+            "levels": [
+                {"mac_num": 2048},
+                {"mac_num": 4096},
+                {"mac_num": 6144},
+                {"mac_num": 8192}
+            ]
+        },
+        {
+            "name": "vec_num",
+            "levels":[
+                {"vec_num": 64},
+                {"vec_num": 128},
+                {"vec_num": 256},
+                {"vec_num": 512},
+                {"vec_num": 768},
+                {"vec_num": 1024}
+            ]
+        }
     ],
-    "initial_offsets": [0, 1, 2, 6]
+    "seed_n":27,
+    "seed_strategy":"farthest",
+    "core_num":16,
+    "fixed_hardware":{
+        "buffer_size": 3072,
+        "buffer_read_bw": 8192,
+        "buffer_write_bw": 8192,
+        "frequency": 1000
+    }
 }

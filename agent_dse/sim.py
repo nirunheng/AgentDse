@@ -5,11 +5,14 @@ import shutil
 import sys
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, TYPE_CHECKING
 
 import yaml
 from .import dramcfg
 from .path import DRAM_DIR, ARTIFACT_DIR, ATLAS, ATLAS_LIB, ROOT
+from . import costfn
+if TYPE_CHECKING:
+    from .dims import Space
 
 WORKER = Path(__file__).resolve().parent / "sim_worker.py"
 
@@ -88,7 +91,7 @@ _SYSTEM_TEMPLATE = {
 def build_system_yaml(
     out_dir:Path,
     dram_yaml:Path,
-    fixed_hardware: Dict[str, Any],
+    point: Dict[str, Any],
     core_num:int=16
 )->Path:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -96,12 +99,14 @@ def build_system_yaml(
     arch = chip["architecture"]
     arch["core_num"] = core_num
     arch["dram"]["config_path"] = str(dram_yaml)
-    arch["frequency"]=float(fixed_hardware["frequency"])
-    arch["core"]["matrix"]["mac_num"] = int(fixed_hardware["mac_num"])
-    arch["core"]["vector"]["vec_num"] = int(fixed_hardware["vec_num"])
-    arch["core"]["buffer"]["buffer_size"] = int(fixed_hardware["buffer_size"])
-    arch["core"]["buffer"]["read_bw"] = float(fixed_hardware["buffer_read_bw"])
-    arch["core"]["buffer"]["write_bw"] = float(fixed_hardware["buffer_write_bw"])
+    arch["frequency"]=float(point["frequency"])
+    arch["core"]["matrix"]["mac_num"] = int(point["mac_num"])
+    arch["core"]["matrix"]["power"] = costfn.unit_power(point, "mac_num")
+    arch["core"]["vector"]["vec_num"] = int(point["vec_num"])
+    arch["core"]["vector"]["power"] = costfn.unit_power(point, "vec_num")
+    arch["core"]["buffer"]["buffer_size"] = int(point["buffer_size"])
+    arch["core"]["buffer"]["read_bw"] = float(point["buffer_read_bw"])
+    arch["core"]["buffer"]["write_bw"] = float(point["buffer_write_bw"])
 
     chip_path = out_dir / "chip.yaml"
     with chip_path.open("w") as f:
@@ -116,14 +121,18 @@ def build_system_yaml(
     return system_path
 
 def run_once(
-    bw_gbps: int,
-    channel: int,
-    density_gb: int,
+    point:Dict[str, Any],
     run_cfg: Dict[str, Any],
-    tag: str,   
+    space:"Space",
+    tag: Optional[str] = None,   
 )->Dict[str, Any]:
     # first step: generate Dram_Config
-    dram_yaml = dramcfg.write_cfg(channel=channel, density_gb=density_gb)
+    tag = tag or space.tag(point)
+    dram_yaml = dramcfg.write_cfg(
+        channel=int(point["channel"]),
+        density_gb=int(point["density_gb"])
+    )
+
     out_dir = ARTIFACT_DIR / tag
     if out_dir.exists():
         shutil.rmtree(out_dir)
@@ -131,7 +140,7 @@ def run_once(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     system_yaml = build_system_yaml(
-        out_dir, dram_yaml=dram_yaml, fixed_hardware=run_cfg["fixed_hardware"], core_num=run_cfg["core_num"]
+        out_dir, dram_yaml=dram_yaml, point=point, core_num=int(space.core_num)
     )
 
     spec_path = out_dir / "spec.json"
@@ -170,9 +179,11 @@ def run_once(
         raise RuntimeError(f"ATLAS failed (rc={proc.returncode}); see {log_path}")
 
     payload = json.loads(result_path.read_text())
-    payload["bw_gbps"] = bw_gbps
-    payload["channel"] = channel
-    payload["density_gb"] = density_gb
+    # 通用：point 的所有字段（维度值 + 随行参数 + fixed_hardware）都进记录。
+    # 加第 4 维时这里不用改。用 setdefault 是为了不让维度名意外覆盖仿真指标。
+    for k, v in point.items():
+        payload.setdefault(k, v)
+    payload["fingerprint"] = space.fingerprint(point)
     payload["run_dir"] = str(out_dir)
     return payload
 

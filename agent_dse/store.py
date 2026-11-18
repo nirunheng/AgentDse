@@ -12,9 +12,6 @@ from .path import DB_PATH
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS trials (
     fingerprint TEXT PRIMARY KEY,
-    bw_gbps     INTEGER NOT NULL,
-    channel     INTEGER NOT NULL,
-    density_gb  INTEGER NOT NULL,
     status      TEXT NOT NULL,
     cost        REAL,
     latency_s   REAL,
@@ -25,14 +22,16 @@ CREATE TABLE IF NOT EXISTS trials (
 CREATE TABLE IF NOT EXISTS decisions (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     round       INTEGER NOT NULL,
-    chosen_bw   INTEGER NOT NULL,
+    chosen_fp   TEXT_NOT_NULL,
+    chosen_pt   TEXT_NOT_NULL,
     reason      TEXT,
     evidence    TEXT,
     created_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS best (
     id          INTEGER PRIMARY KEY CHECK (id = 1),
-    bw_gbps     INTEGER NOT NULL,
+    fingerprint TEXT NOT NULL,
+    point       TEXT NOT NULL,
     cost        REAL NOT NULL,
     updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -48,15 +47,17 @@ class Store:
 
     def put_trial(self, record:Dict[str, Any])->bool:
         """return True if new, False if fingerprint is already exists"""
-        fp = f"bw{record['bw_gbps']}"
+        fp = record["fingerprint"]
         try:
             self.conn.execute(
-                "INSERT INTO trials (fingerprint,bw_gbps,channel,density_gb,status,cost,"
-                "latency_s,energy_j,record) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO trials (fingerprint,status,cost,latency_s,energy_j,record)"
+                "VALUES (?,?,?,?,?,?)",
                 (
-                    fp, record["bw_gbps"], record["channel"], record["density_gb"],
-                    record.get("status", "ok"), record.get("cost"),
-                    record.get("latency_s"), record.get("energy_j"),
+                    fp,
+                    record.get("status", "ok"),
+                    record.get("cost"),
+                    record.get("latency_s"),
+                    record.get("energy_j"),
                     json.dumps(record),
                 ),
             )
@@ -67,24 +68,26 @@ class Store:
 
     def all_trials(self)->List[Dict[str, Any]]:
         rows = self.conn.execute(
-            "SELECT record FROM trials ORDER BY bw_gbps"
+            "SELECT record FROM trials ORDER BY created_at"
         ).fetchall()
         return [json.loads(r["record"]) for r in rows]
 
     def ok_trials(self) -> List[Dict[str, Any]]:
         return [r for r in self.all_trials() if r.get("status") == "ok"]
 
-    def has_bw(self, bw: int) -> bool:
+    def has_point(self, fingerprint:str)->bool:
         row = self.conn.execute(
-            "SELECT 1 FROM trials WHERE bw_gbps=?", (bw,)
+            "SELECT 1 FROM trials WHERE fingerprint=?", (fingerprint,)
         ).fetchone()
         return row is not None
+        
 
     # ---- decisions ----
-    def put_decision(self, rnd: int, bw: int, reason: str, evidence: str) -> None:
+    def put_decision(self, rnd: int, point: Dict[str, Any], fingerprint: str, reason: str, evidence: str) -> None:
         self.conn.execute(
-            "INSERT INTO decisions (round,chosen_bw,reason,evidence) VALUES (?,?,?,?)",
-            (rnd, bw, reason, evidence),
+            "INSERT INTO decisions (round,chosen_fp,chosen_pt,reason,evidence)"
+            " VALUES (?,?,?,?,?)",
+            (rnd, fingerprint, json.dumps(point), reason, evidence),
         )
         self.conn.commit()
 
@@ -93,19 +96,34 @@ class Store:
             "SELECT * FROM decisions ORDER BY id").fetchall()]
 
     # ---- best ----
-    def update_best(self, bw: int, cost: float) -> str:
+    def update_best(self, point: Dict[str, Any], fingerprint:str, cost: float) -> str:
         """Returns 'inserted' | 'updated' | 'kept'."""
-        row = self.conn.execute("SELECT bw_gbps,cost FROM best WHERE id=1").fetchone()
+        row = self.conn.execute("SELECT cost FROM best WHERE id=1").fetchone()
         if row is None:
-            self.conn.execute("INSERT INTO best (id,bw_gbps,cost) VALUES (1,?,?)", (bw, cost))
+            self.conn.execute(
+                "INSERT INTO best (id,fingerprint,point,cost) VALUES (1,?,?,?)",
+                (fingerprint, json.dumps(point), cost)
+                )
             self.conn.commit()
             return "inserted"
+        
+        # if newly best
         if cost < row["cost"]:
-            self.conn.execute("UPDATE best SET bw_gbps=?,cost=? WHERE id=1", (bw, cost))
+            self.conn.execute(
+                "UPDATE best SET fingerprint=?, point=?, cost=? WHERE id=1", 
+                (fingerprint, json.dumps(point), cost)
+                )
             self.conn.commit()
             return "updated"
         return "kept"
 
     def best(self) -> Optional[Dict[str, Any]]:
         row = self.conn.execute("SELECT * FROM best WHERE id=1").fetchone()
-        return dict(row) if row else None
+        if row is None:
+            return None
+        else:
+            return{
+                "fingerprint":row["fingerprint"],
+                "point":json.dumps(row["point"]),
+                "cost":row["cost"]
+            }

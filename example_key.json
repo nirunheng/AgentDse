@@ -1,0 +1,9 @@
+{
+    "mimo_code_plan":{
+        "model":"set your model name here",
+        "key":"set your api key here",
+        "url":"set your url here",
+        "temperature":0.2,
+        "timeout":600
+    }
+}
