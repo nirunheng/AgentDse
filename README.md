@@ -42,6 +42,7 @@ AgentDSE/
 ├── tests/                    # 功能检查脚本
 ├── data/                     # 实验数据库与仿真产物
 ├── logs/                     # 探索过程记录
+├── example_key.json          # LLM 接口配置模板
 └── key.json                  # 本地 LLM 接口配置
 ```
 
@@ -86,11 +87,17 @@ ATLAS_PATH = str(Path(__file__).resolve().parent / "ATLAS-MICRO-2026-main")
 
 ### 3. 配置 LLM
 
-在项目根目录创建 `key.json`，填写兼容 OpenAI Chat Completions API 的服务配置：
+在项目根目录复制配置模板：
+
+```bash
+cp example_key.json key.json
+```
+
+编辑生成的 `key.json`，将 `model`、`key` 和 `url` 替换为兼容 OpenAI Chat Completions API 的服务配置。例如：
 
 ```json
 {
-  "default": {
+  "mimo_code_plan": {
     "model": "your-model-name",
     "key": "your-api-key",
     "url": "https://your-api-endpoint/v1",
@@ -100,7 +107,9 @@ ATLAS_PATH = str(Path(__file__).resolve().parent / "ATLAS-MICRO-2026-main")
 }
 ```
 
-`url` 为 API 基础地址，客户端会追加 `/chat/completions`。`key.json` 仅用于本地配置，不应将真实密钥提交到版本库。
+`url` 为 API 基础地址，客户端会追加 `/chat/completions`。模板中的 `mimo_code_plan` 是配置名称，不限制模型或服务商；只有一个配置时会自动使用它，存在多个配置时默认读取 `default`。保存后即可执行下方的检查和运行命令。
+
+`example_key.json` 用于共享配置格式，`key.json` 仅用于本地保存真实凭据，已由 `.gitignore` 排除。
 
 ### 4. 检查环境并运行
 
